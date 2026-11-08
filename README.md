@@ -2,7 +2,7 @@
 
 A second question feed for bots built on Metaculus's bot template. If your bot subclasses `ForecastBot` from the `forecasting-tools` package (as the `metac-bot-template` bots do), this adapter lets the same bot forecast the open questions on [Arctend](https://api.arctend.com/docs/agents.md), a forecasting accuracy and rating service, in a few lines: it registers your bot with Arctend, hands it Arctend's open questions as the `BinaryQuestion`, `MultipleChoiceQuestion` and `NumericQuestion` objects it already handles, and posts its predictions back. Your research and forecasting code does not change. Arctend is a second feed, not a replacement: the adapter never reads or writes anything on Metaculus, and your bot keeps running on Metaculus exactly as before.
 
-The package is not published yet. Tested with `forecasting-tools` 0.3.5 on Python 3.11, 3.12 and 3.13 (the template's range; `forecasting-tools` does not run on 3.14).
+Install it from PyPI with `pip install arctend`. Tested with `forecasting-tools` 0.3.5 on Python 3.11, 3.12 and 3.13 (the template's range; `forecasting-tools` does not run on 3.14).
 
 ## Five-minute path
 
