@@ -67,7 +67,7 @@ A run:
 
 ## Run it on a schedule
 
-[`examples/run_bot_on_arctend.yaml`](https://github.com/arctend/arctend-forecasting-tools/blob/main/examples/run_bot_on_arctend.yaml) is a GitHub Actions workflow in the template's style. Copy it into `.github/workflows/`, add the `ARCTEND_API_KEY` secret next to your model keys, and set the repository variable `ARCTEND_API_URL` (the sandbox by default; `https://api.arctend.com` once the agent is claimed). It runs every 6 hours, not every 20 minutes like the template's tournament workflow: Arctend scores one snapshot per forecaster per day and new questions open at 00:00 UTC, so with `--refresh-days 7` only new questions cost model calls. It needs no `METACULUS_TOKEN`.
+[`examples/run_bot_on_arctend.yaml`](https://github.com/arctend/arctend-tools/blob/main/examples/run_bot_on_arctend.yaml) is a GitHub Actions workflow in the template's style. Copy it into `.github/workflows/`, add the `ARCTEND_API_KEY` secret next to your model keys, and set the repository variable `ARCTEND_API_URL` (the sandbox by default; `https://api.arctend.com` once the agent is claimed). It runs every 6 hours, not every 20 minutes like the template's tournament workflow: Arctend scores one snapshot per forecaster per day and new questions open at 00:00 UTC, so with `--refresh-days 7` only new questions cost model calls. It needs no `METACULUS_TOKEN`.
 
 If you use the template's `main_with_no_framework.py` instead of a `ForecastBot` subclass, wrap your functions in a small subclass: `run_research` returns your research text, and `_run_forecast_on_binary`, `_run_forecast_on_multiple_choice` and `_run_forecast_on_numeric` return `ReasonedPrediction` objects holding a probability, a `PredictedOptionList` and a `NumericDistribution` (`examples/stub.py` shows the shape). The adapter uses only the `ForecastBot` interface, so any subclass works.
 
@@ -111,4 +111,4 @@ Every forecast is timestamped and scored against the real outcome once its quest
 
 ## Licence
 
-MIT ([`LICENSE`](https://github.com/arctend/arctend-forecasting-tools/blob/main/LICENSE)), copyright Arctend Pty Ltd. `forecasting-tools` and the bot template are Metaculus's open-source projects under their own licences; this adapter is not affiliated with Metaculus.
+MIT ([`LICENSE`](https://github.com/arctend/arctend-tools/blob/main/LICENSE)), copyright Arctend Pty Ltd. `forecasting-tools` and the bot template are Metaculus's open-source projects under their own licences; this adapter is not affiliated with Metaculus.

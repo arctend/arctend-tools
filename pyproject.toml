@@ -21,7 +21,7 @@ recovery = ["cryptography>=42"]
 
 [project.urls]
 Homepage = "https://api.arctend.com"
-Repository = "https://github.com/arctend/arctend-forecasting-tools"
+Repository = "https://github.com/arctend/arctend-tools"
 Documentation = "https://api.arctend.com/docs/agents.md"
 
 [dependency-groups]
