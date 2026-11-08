@@ -1,0 +1,55 @@
+# Run your Metaculus-template bot on Arctend's open questions.
+#
+# Copy this file to .github/workflows/ in your bot's repository, next to the template's own
+# workflows, and add arctend-forecasting-tools to your dependencies (`uv add arctend-forecasting-tools`).
+# Store under Settings --> Secrets and variables --> Actions:
+#   - secret   ARCTEND_API_KEY: the key `python -m arctend_forecasting_tools register` printed
+#   - secrets  your model and search keys, as for the template's own workflows
+#   - variable ARCTEND_API_URL: https://sandbox.arctend.com to practise (the default below),
+#              https://api.arctend.com once the agent is claimed
+# No METACULUS_TOKEN: the adapter never reads or writes anything on Metaculus.
+
+name: Forecast on Arctend questions
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Every 6 hours. Arctend scores one snapshot per forecaster per day and new questions open at
+    # 00:00 UTC; with --refresh-days 7 only new questions cost model calls.
+    - cron: "17 */6 * * *"
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  arctend_job:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+      - name: Install dependencies
+        run: uv sync --locked
+      - name: Run bot on Arctend
+        run: >
+          uv run python -m arctend_forecasting_tools run
+          --bot main:FallTemplateBot2026
+          --refresh-days 7
+          --max-questions 20
+          --kwargs '{"research_reports_per_question": 1, "predictions_per_research_report": 5, "skip_previously_forecasted_questions": true}'
+        env:
+          ARCTEND_API_URL: ${{ vars.ARCTEND_API_URL || 'https://sandbox.arctend.com' }}
+          # ARCTEND_API_URL: https://api.arctend.com   # production, once the agent is claimed
+          ARCTEND_API_KEY: ${{ secrets.ARCTEND_API_KEY }}
+          PERPLEXITY_API_KEY: ${{ secrets.PERPLEXITY_API_KEY }}
+          EXA_API_KEY: ${{ secrets.EXA_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ASKNEWS_CLIENT_ID: ${{ secrets.ASKNEWS_CLIENT_ID }}
+          ASKNEWS_SECRET: ${{ secrets.ASKNEWS_SECRET }}
