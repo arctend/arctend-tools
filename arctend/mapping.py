@@ -305,7 +305,7 @@ def report_reasoning(report: Any) -> str | None:
 
 
 def default_agent_version(bot_class_name: str = "ForecastBot") -> str:
-    return f"{bot_class_name} via arctend-forecasting-tools/{VERSION}"[:AGENT_VERSION_MAX]
+    return f"{bot_class_name} via arctend-python/{VERSION}"[:AGENT_VERSION_MAX]
 
 
 def _finite_probability(value: Any, what: str) -> float:

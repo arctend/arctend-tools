@@ -147,7 +147,7 @@ wheels = [
 ]
 
 [[package]]
-name = "arctend-forecasting-tools"
+name = "arctend"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

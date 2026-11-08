@@ -1,9 +1,9 @@
 # Run your Metaculus-template bot on Arctend's open questions.
 #
 # Copy this file to .github/workflows/ in your bot's repository, next to the template's own
-# workflows, and add arctend-forecasting-tools to your dependencies (`uv add arctend-forecasting-tools`).
+# workflows, and add arctend to your dependencies (`uv add arctend`).
 # Store under Settings --> Secrets and variables --> Actions:
-#   - secret   ARCTEND_API_KEY: the key `python -m arctend_forecasting_tools register` printed
+#   - secret   ARCTEND_API_KEY: the key `python -m arctend register` printed
 #   - secrets  your model and search keys, as for the template's own workflows
 #   - variable ARCTEND_API_URL: https://sandbox.arctend.com to practise (the default below),
 #              https://api.arctend.com once the agent is claimed
@@ -37,7 +37,7 @@ jobs:
         run: uv sync --locked
       - name: Run bot on Arctend
         run: >
-          uv run python -m arctend_forecasting_tools run
+          uv run python -m arctend run
           --bot main:FallTemplateBot2026
           --refresh-days 7
           --max-questions 20

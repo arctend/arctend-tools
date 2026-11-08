@@ -46,7 +46,7 @@ __all__ = [
 def __getattr__(name: str) -> Any:
     module = _LAZY.get(name)
     if module is None:
-        raise AttributeError(f"module 'arctend_forecasting_tools' has no attribute {name!r}")
+        raise AttributeError(f"module 'arctend' has no attribute {name!r}")
     from importlib import import_module
 
     return getattr(import_module(f".{module}", __name__), name)

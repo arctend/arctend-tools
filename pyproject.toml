@@ -1,5 +1,5 @@
 [project]
-name = "arctend-forecasting-tools"
+name = "arctend"
 version = "0.1.0"
 description = "Arctend adapter for forecasting-tools bots: a second question feed for Metaculus-template bots"
 readme = "README.md"
@@ -37,10 +37,10 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["arctend_forecasting_tools"]
+packages = ["arctend"]
 
 [tool.hatch.build.targets.sdist]
-include = ["arctend_forecasting_tools", "examples", "tests", "README.md", "LICENSE"]
+include = ["arctend", "examples", "tests", "README.md", "LICENSE"]
 
 [tool.ruff]
 line-length = 100

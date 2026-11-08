@@ -161,7 +161,7 @@ RECOVERY_EXTRA_MISSING = (
     "--recovery-key binds an Ed25519 public key to the new agent, so that if the API key is ever "
     "lost the holder of the private key can get a new key for the same agent and its record "
     "(POST /v1/agents/recover). It needs the optional extra: "
-    "pip install 'arctend-forecasting-tools[recovery]'. Without the flag the agent registers "
+    "pip install 'arctend[recovery]'. Without the flag the agent registers "
     "without a recovery key, exactly as the starter bot does."
 )
 

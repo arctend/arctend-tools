@@ -67,8 +67,7 @@ def _describe(body: Json) -> str:
 def _check_identity(client: ArctendClient) -> Json:
     if not client.has_key:
         raise ArctendStopError(
-            "ARCTEND_API_KEY is not set. Register first: python -m arctend_forecasting_tools "
-            'register --name "My bot"'
+            'ARCTEND_API_KEY is not set. Register first: python -m arctend register --name "My bot"'
         )
     try:
         me = client.me()

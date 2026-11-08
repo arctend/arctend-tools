@@ -12,8 +12,8 @@ from pathlib import Path
 import pytest
 from conftest import ROOT, FakeArctend, make_question
 
-from arctend_forecasting_tools import __main__ as cli
-from arctend_forecasting_tools.api import (
+from arctend import __main__ as cli
+from arctend.api import (
     DEFAULT_API_URL,
     USER_AGENT,
     VERSION,
@@ -89,7 +89,7 @@ def test_run_stopped_by_a_rejected_key_exits_2(
 
 def test_run_rejects_a_class_that_is_not_a_bot(keyed_env: FakeArctend) -> None:
     with pytest.raises(ValueError, match="ForecastBot"):
-        cli.run(["run", "--bot", "arctend_forecasting_tools.api:ArctendClient"])
+        cli.run(["run", "--bot", "arctend.api:ArctendClient"])
     with pytest.raises(ValueError, match="MODULE:CLASS"):
         cli.run(["run", "--bot", "examples.stub"])
     with pytest.raises(ValueError, match="JSON object"):
@@ -109,9 +109,9 @@ def test_check_and_register_never_import_forecasting_tools(
     fake.add(make_question("binary", 1))
     code = (
         "import sys, runpy\n"
-        f"sys.argv = ['arctend_forecasting_tools'] + {command.split()!r}\n"
+        f"sys.argv = ['arctend'] + {command.split()!r}\n"
         "try:\n"
-        "    runpy.run_module('arctend_forecasting_tools', run_name='__main__')\n"
+        "    runpy.run_module('arctend', run_name='__main__')\n"
         "except SystemExit as exit:\n"
         "    assert exit.code in (0, None), exit.code\n"
         "assert 'forecasting_tools' not in sys.modules, 'forecasting_tools was imported'\n"
@@ -168,14 +168,14 @@ def test_long_retry_after_is_not_waited(fake: FakeArctend) -> None:
 def test_version_matches_pyproject() -> None:
     meta = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
     assert meta["version"] == VERSION
-    assert USER_AGENT == f"arctend-forecasting-tools/{VERSION}"
+    assert USER_AGENT == f"arctend-python/{VERSION}"
     assert meta["requires-python"] == ">=3.11,<3.14"
     assert meta["dependencies"] == ["forecasting-tools>=0.3.5,<0.4"]
 
 
 def _shipped_text_files() -> list[Path]:
     files = [ROOT / "README.md", ROOT / "pyproject.toml"]
-    for folder in ("arctend_forecasting_tools", "examples"):
+    for folder in ("arctend", "examples"):
         files += [p for p in (ROOT / folder).rglob("*") if p.suffix in (".py", ".yaml", ".md")]
     return files
 
@@ -207,7 +207,7 @@ def test_no_attribution_trailers_in_the_package() -> None:
 
 
 def test_no_metaculus_token_is_read() -> None:
-    for path in (ROOT / "arctend_forecasting_tools").rglob("*.py"):
+    for path in (ROOT / "arctend").rglob("*.py"):
         text = path.read_text(encoding="utf-8")
         assert 'METACULUS_TOKEN"' not in text and 'getenv("METACULUS' not in text, path
         assert "MetaculusClient(" not in text, path

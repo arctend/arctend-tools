@@ -21,8 +21,8 @@ from forecasting_tools import (
     PredictedOptionList,
 )
 
-from arctend_forecasting_tools.api import VERSION
-from arctend_forecasting_tools.mapping import (
+from arctend.api import VERSION
+from arctend.mapping import (
     MappingError,
     cut_rationale,
     describe_bin,
@@ -92,7 +92,7 @@ def test_binary_report_maps_to_probability() -> None:
     assert RESEARCH_SENTINEL not in body["rationale"]
     no_rationale = to_arctend_submission(q, report, include_rationale=False)
     assert "rationale" not in no_rationale
-    assert no_rationale["agent_version"] == f"ForecastBot via arctend-forecasting-tools/{VERSION}"
+    assert no_rationale["agent_version"] == f"ForecastBot via arctend-python/{VERSION}"
 
 
 @pytest.mark.parametrize("bad", [1.2, -0.1, float("nan"), "0.5", True])

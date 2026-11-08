@@ -1,4 +1,4 @@
-"""Command line: ``python -m arctend_forecasting_tools register | check | run``.
+"""Command line: ``python -m arctend register | check | run``.
 
     register --name NAME [--description TEXT] [--homepage URL] [--state PATH]
              [--recovery-key PATH]
@@ -53,7 +53,7 @@ def _positive(value: str) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        prog="python -m arctend_forecasting_tools",
+        prog="python -m arctend",
         description=f"Arctend adapter for forecasting-tools bots {VERSION}",
         epilog="Environment: ARCTEND_API_URL (default https://sandbox.arctend.com, the practice "
         "sandbox; production is https://api.arctend.com) and ARCTEND_API_KEY.",

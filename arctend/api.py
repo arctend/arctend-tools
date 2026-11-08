@@ -24,7 +24,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 VERSION = "0.1.0"
-USER_AGENT = f"arctend-forecasting-tools/{VERSION}"
+USER_AGENT = f"arctend-python/{VERSION}"
 
 SANDBOX_API_URL = "https://sandbox.arctend.com"
 PRODUCTION_API_URL = "https://api.arctend.com"

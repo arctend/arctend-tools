@@ -14,8 +14,8 @@ from pathlib import Path
 import pytest
 from conftest import FakeArctend
 
-from arctend_forecasting_tools import __main__ as cli
-from arctend_forecasting_tools.register import (
+from arctend import __main__ as cli
+from arctend.register import (
     AgentState,
     base36,
     leading_zero_bits,
@@ -114,7 +114,7 @@ def test_recovery_key_without_the_extra_exits_2(
     code = cli.run(["register", "--name", "My bot", "--recovery-key", str(env / "k.pem")])
     err = capsys.readouterr().err
     assert code == 2
-    assert "arctend-forecasting-tools[recovery]" in err
+    assert "arctend[recovery]" in err
     assert "lost" in err
     assert fake.requests == []
     assert not (env / "k.pem").exists()

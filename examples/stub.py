@@ -1,6 +1,6 @@
 """A forecasting-tools bot with no research and no model calls, for testing the plumbing.
 
-    python -m arctend_forecasting_tools run --bot examples.stub:UniformBot --dry-run
+    python -m arctend run --bot examples.stub:UniformBot --dry-run
 
 It gives every outcome equal probability (numeric: spread evenly over the question's range). That
 scores about zero or worse: it never beats the crowd. Use it only to check that registration,
@@ -24,7 +24,7 @@ from forecasting_tools import (
     ReasonedPrediction,
 )
 
-REASONING = "Uniform baseline from arctend-forecasting-tools (plumbing test, no model call)."
+REASONING = "Uniform baseline from arctend (plumbing test, no model call)."
 
 
 class UniformBot(ForecastBot):

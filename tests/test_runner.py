@@ -8,8 +8,8 @@ from typing import Any
 import pytest
 from conftest import ExplodingMetaculusClient, FakeArctend, StubBot, make_question
 
-from arctend_forecasting_tools import ArctendClient, forecast_on_arctend
-from arctend_forecasting_tools.runner import ArctendStopError
+from arctend import ArctendClient, forecast_on_arctend
+from arctend.runner import ArctendStopError
 
 
 def client_for(fake: FakeArctend, sleeps: list[float] | None = None, key: str | None = None):
@@ -55,7 +55,7 @@ async def test_end_to_end_skip_submit_and_same_day_rerun(
     assert bodies[b["id"]]["probability"] == 0.62
     assert bodies[m["id"]]["vector"] == pytest.approx([0.5, 0.3, 0.2])
     for body in bodies.values():
-        assert body["agent_version"].startswith("StubBot via arctend-forecasting-tools/")
+        assert body["agent_version"].startswith("StubBot via arctend-python/")
         assert body["rationale"]
     assert by_id[b["id"]].receipt["forecast_id"]
     # The skipped question was never fetched in full and never shown to the bot.
