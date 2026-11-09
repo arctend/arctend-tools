@@ -8,8 +8,9 @@ from typing import Any
 import pytest
 from conftest import ExplodingMetaculusClient, FakeArctend, StubBot, make_question
 
-from arctend import ArctendClient, forecast_on_arctend
-from arctend.runner import ArctendStopError
+from arctend import ArctendClient
+from arctend.tools import forecast_on_arctend
+from arctend.tools.runner import ArctendStopError
 
 
 def client_for(fake: FakeArctend, sleeps: list[float] | None = None, key: str | None = None):

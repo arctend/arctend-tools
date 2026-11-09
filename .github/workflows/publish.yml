@@ -1,13 +1,20 @@
 # Publishes this package to PyPI with trusted publishing (OpenID Connect): no API token is
 # stored anywhere. PyPI trusts this workflow file in github.com/arctend/arctend-tools only.
 # Run it by hand (Actions > Publish to PyPI > Run workflow) after a release snapshot is pushed.
+# The publish job runs only after the whole test matrix (test.yml) has passed.
 name: Publish to PyPI
 
 on:
   workflow_dispatch:
 
 jobs:
+  test:
+    permissions:
+      contents: read
+    uses: ./.github/workflows/test.yml
+
   publish:
+    needs: test
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -15,8 +22,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
-      - name: Test
-        run: uv run --python 3.12 pytest -q
       - name: Build
         run: rm -rf dist && uv build
       - name: Publish

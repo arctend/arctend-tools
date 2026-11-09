@@ -34,7 +34,7 @@ from forecasting_tools import (
     NumericQuestion,
 )
 
-from .api import PRODUCTION_API_URL, VERSION
+from ..api import PRODUCTION_API_URL, VERSION
 
 Json = dict[str, Any]
 

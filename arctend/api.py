@@ -12,6 +12,7 @@ This module never imports ``forecasting_tools``: ``check`` and ``register`` work
 from __future__ import annotations
 
 import email.utils
+import hashlib
 import json
 import math
 import os
@@ -19,11 +20,11 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Sequence
 from datetime import UTC, datetime
 from typing import Any
 
-VERSION = "0.1.1"
+VERSION = "0.2.0"
 USER_AGENT = f"arctend-python/{VERSION}"
 
 SANDBOX_API_URL = "https://sandbox.arctend.com"
@@ -109,6 +110,55 @@ def idempotency_key(question_id: str, now: datetime | None = None) -> str:
     forecast (the scorer takes one snapshot a day anyway)."""
     day = (now or datetime.now(UTC)).astimezone(UTC).strftime("%Y-%m-%d")
     return f"arctend-ft:{question_id}:{day}"
+
+
+def manual_idempotency_key(question_id: str, body: Json, now: datetime | None = None) -> str:
+    """The key of a forecast submitted by hand (``arctend forecast``, ``submit_forecast``):
+    ``arctend-cli:<question id>:<UTC date>:<16 hex characters of the body's SHA-256>``. The same
+    values on the same day replay the first receipt; corrected values are a new forecast."""
+    day = (now or datetime.now(UTC)).astimezone(UTC).strftime("%Y-%m-%d")
+    canonical = json.dumps(body, sort_keys=True, separators=(",", ":"))
+    digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:16]
+    return f"arctend-cli:{question_id}:{day}:{digest}"
+
+
+VECTOR_SUM_TOLERANCE = 1e-6
+
+
+def _check_probability(value: float, what: str) -> float:
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        raise ValueError(f"{what} must be a number, not {value!r}")
+    p = float(value)
+    if not math.isfinite(p) or p < 0 or p > 1:
+        raise ValueError(f"{what} must be a number from 0 to 1, not {value!r}")
+    return p
+
+
+def forecast_body(
+    *,
+    probability: float | None = None,
+    vector: Sequence[float] | None = None,
+    rationale: str | None = None,
+) -> Json:
+    """The body of ``PUT /v1/questions/{id}/forecast``: ``probability`` for a binary question or
+    ``vector`` (one probability per option or range, in ``idx`` order, summing to 1) for
+    multiple choice and numeric. Raises ``ValueError`` before anything is sent."""
+    if (probability is None) == (vector is None):
+        raise ValueError("give exactly one of probability (binary) and vector")
+    body: Json
+    if probability is not None:
+        body = {"probability": _check_probability(probability, "the probability")}
+    else:
+        values = [_check_probability(v, "each vector entry") for v in vector or []]
+        if len(values) < 2:
+            raise ValueError("a vector needs at least two entries")
+        total = math.fsum(values)
+        if abs(total - 1) > VECTOR_SUM_TOLERANCE:
+            raise ValueError(f"the vector must sum to 1, not {total:g}")
+        body = {"vector": values}
+    if rationale is not None:
+        body["rationale"] = rationale
+    return body
 
 
 Opener = Callable[[urllib.request.Request, float], Any]
@@ -249,6 +299,16 @@ class ArctendClient:
     def get_question(self, question_id: str) -> Json:
         return self.request("GET", f"/v1/questions/{_quote(question_id)}")
 
+    def get_consensus(self, question_id: str) -> Json:
+        return self.request("GET", f"/v1/questions/{_quote(question_id)}/consensus")
+
+    def get_consensus_history(self, question_id: str) -> Json:
+        """The first page of the median series' history, newest first (needs a key)."""
+        return self.request("GET", f"/v1/questions/{_quote(question_id)}/consensus/history")
+
+    def get_rating(self, agent_id: str) -> Json:
+        return self.request("GET", f"/v1/agents/{_quote(agent_id)}/rating")
+
     def get_my_forecast(self, question_id: str) -> Json | None:
         """This agent's standing forecast on the question, or None if it has none."""
         try:
@@ -265,3 +325,33 @@ class ArctendClient:
             body=body,
             headers={"Idempotency-Key": idempotency_key},
         )
+
+    def submit_forecast(
+        self,
+        question_id: str,
+        *,
+        probability: float | None = None,
+        vector: Sequence[float] | None = None,
+        rationale: str | None = None,
+    ) -> Json:
+        """Submit one forecast by hand: ``probability`` for a binary question, or ``vector`` for
+        multiple choice and numeric. The key is ``manual_idempotency_key``, so the same values
+        on the same UTC day return the first receipt with ``"replayed": true``."""
+        body = forecast_body(probability=probability, vector=vector, rationale=rationale)
+        return self.put_forecast(question_id, body, manual_idempotency_key(question_id, body))
+
+    def practice_results_page(self, cursor: str | None = None) -> Json:
+        """One page of this agent's practice results, newest first (``items``, ``next_cursor``).
+        The practice sandbox only (needs a key); production answers 404."""
+        query = "?" + urllib.parse.urlencode({"cursor": cursor}) if cursor else ""
+        return self.request("GET", "/v1/practice/results" + query)
+
+    def practice_results(self) -> Iterator[Json]:
+        """Every practice result of this agent, newest first, following ``next_cursor``."""
+        cursor: str | None = None
+        while True:
+            page = self.practice_results_page(cursor)
+            yield from page["items"]
+            cursor = page.get("next_cursor")
+            if not cursor:
+                return

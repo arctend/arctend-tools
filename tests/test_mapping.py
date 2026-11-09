@@ -22,7 +22,7 @@ from forecasting_tools import (
 )
 
 from arctend.api import VERSION
-from arctend.mapping import (
+from arctend.tools.mapping import (
     MappingError,
     cut_rationale,
     describe_bin,

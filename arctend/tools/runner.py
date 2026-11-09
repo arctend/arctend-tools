@@ -15,7 +15,7 @@ from typing import Any, Literal
 
 from forecasting_tools import ForecastBot
 
-from .api import ApiError, ArctendClient, idempotency_key
+from ..api import ApiError, ArctendClient, idempotency_key
 from .mapping import (
     MappingError,
     default_agent_version,
@@ -67,7 +67,7 @@ def _describe(body: Json) -> str:
 def _check_identity(client: ArctendClient) -> Json:
     if not client.has_key:
         raise ArctendStopError(
-            'ARCTEND_API_KEY is not set. Register first: python -m arctend register --name "My bot"'
+            'ARCTEND_API_KEY is not set. Register first: arctend register --name "My bot"'
         )
     try:
         me = client.me()

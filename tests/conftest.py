@@ -143,6 +143,26 @@ def summary_of(q: Json) -> Json:
 # --- Fake Arctend server ----------------------------------------------------------------------
 
 
+AGENT_ID = "00000000-0000-0000-0000-00000000a001"
+
+
+def consensus_point(value: list[float], **overrides: Any) -> Json:
+    point: Json = {
+        "method": "median",
+        "value": value,
+        "n_forecasters": 7,
+        "n_attested": 3,
+        "min_crowd": 5,
+        "thin_crowd": True,
+        "rating_version": None,
+        "consensus_version": "consensus_v1",
+        "computed_at": "2026-11-07T12:00:00.000Z",
+        "content_hash": "0" * 64,
+    }
+    point.update(overrides)
+    return point
+
+
 class FakeArctend:
     """Enough of the Arctend API for the adapter: me, the question list (paginated), full
     questions, standing forecasts, PUT with idempotency keys, and registration. ``script`` queues
@@ -156,7 +176,12 @@ class FakeArctend:
         self.requests: list[Json] = []
         self.script: dict[tuple[str, str], list[tuple[int, dict[str, str], Json]]] = {}
         self.page_size = 2
+        self.consensus: dict[str, Json] = {}
+        self.history: dict[str, list[Json]] = {}
+        self.ratings: dict[str, Json] = {}
         self.sandbox = False
+        self.practice_results: list[Json] = []
+        self.serves_practice = True
         self.difficulty = 4
         self.url = ""
         self.lock = threading.Lock()
@@ -207,18 +232,53 @@ class FakeArctend:
                 {
                     "tier": "provisional",
                     "limits": {"forecast_writes_per_day": 200, "reads_per_day": 300},
-                    "agent": {"slug": "test-bot", "name": "Test bot", "is_provisional": True},
+                    "agent": {
+                        "id": AGENT_ID,
+                        "slug": "test-bot",
+                        "name": "Test bot",
+                        "is_provisional": True,
+                    },
                 },
             )
         if path == "/v1/questions":
             return 200, {}, self._page(query)
+        if path == "/v1/practice/results" and method == "GET":
+            if not self.serves_practice:
+                return 404, {}, {"code": "not_found", "title": "Not Found"}
+            start = int(query.get("cursor", ["0"])[0])
+            items = self.practice_results[start : start + self.page_size]
+            nxt = start + self.page_size
+            more = nxt < len(self.practice_results)
+            return 200, {}, {"items": items, "next_cursor": str(nxt) if more else None}
         parts = path.split("/")
+        if parts[1:3] == ["v1", "agents"] and len(parts) == 5 and parts[4] == "rating":
+            if parts[3] in self.ratings:
+                return 200, {}, self.ratings[parts[3]]
+            return (
+                404,
+                {},
+                {"code": "not_found", "detail": "No published rating for this agent"},
+            )
         if len(parts) >= 4 and parts[1:3] == ["v1", "questions"]:
             qid = urllib.parse.unquote(parts[3])
             if qid not in self.questions:
                 return 404, {}, {"code": "not_found"}
             if len(parts) == 4:
                 return 200, {}, copy.deepcopy(self.questions[qid])
+            if parts[4] == "consensus" and len(parts) == 5:
+                return 200, {}, self.consensus_body(qid)
+            if parts[4] == "consensus" and parts[5:] == ["history"]:
+                return (
+                    200,
+                    {},
+                    {
+                        "question_id": qid,
+                        "method": "median",
+                        "delayed_until": None,
+                        "items": self.history.get(qid, []),
+                        "next_cursor": None,
+                    },
+                )
             if parts[4] == "forecast" and method == "GET":
                 if qid in self.standing:
                     return 200, {}, self.standing[qid]
@@ -226,6 +286,17 @@ class FakeArctend:
             if parts[4] == "forecast" and method == "PUT":
                 return self._put(qid, headers.get("Idempotency-Key"), body or {})
         return 404, {}, {"code": "not_found"}
+
+    def consensus_body(self, qid: str) -> Json:
+        q = self.questions[qid]
+        return {
+            "question_id": qid,
+            "format": q["format"],
+            "as_of": iso(datetime.now(UTC)),
+            "median": self.consensus.get(qid),
+            "skill_weighted": None,
+            "skill_weighted_access": "delayed_24h",
+        }
 
     def _page(self, query: dict[str, list[str]]) -> Json:
         items = [summary_of(q) for q in self.questions.values()]
@@ -238,7 +309,7 @@ class FakeArctend:
         if key and key in self.idempotency:
             stored_body, receipt = self.idempotency[key]
             if stored_body != body:
-                return 409, {}, {"code": "idempotency_conflict"}
+                return 409, {}, {"code": "idempotency_key_reused"}
             return 200, {}, {**receipt, "replayed": True}
         receipt = {
             "forecast_id": str(uuid.uuid4()),

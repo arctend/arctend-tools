@@ -132,6 +132,34 @@ def test_check_and_register_never_import_forecasting_tools(
         assert fake.requests, "the command made no request"
 
 
+def test_importing_arctend_does_not_import_forecasting_tools(tmp_path: Path) -> None:
+    code = (
+        "import sys, arctend\n"
+        "assert 'forecasting_tools' not in sys.modules, 'forecasting_tools was imported'\n"
+        "print('clean')\n"
+    )
+    proc = subprocess.run(
+        [sys.executable, "-c", code], capture_output=True, text=True, cwd=tmp_path, timeout=60
+    )
+    assert "clean" in proc.stdout, proc.stderr
+
+
+def test_run_without_the_tools_extra_prints_the_install_hint(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    for name in [
+        m for m in sys.modules if m == "forecasting_tools" or m.startswith("arctend.tools")
+    ]:
+        monkeypatch.delitem(sys.modules, name)
+    monkeypatch.setitem(sys.modules, "forecasting_tools", None)  # an import now raises
+    monkeypatch.setattr(sys, "argv", ["arctend", "run", "--bot", "x:y"])
+    with pytest.raises(SystemExit) as exit_info:
+        cli.main()
+    assert exit_info.value.code == 1
+    err = capsys.readouterr().err
+    assert err.strip() == 'run needs the bot-template adapter: pip install "arctend[tools]"'
+
+
 # --- Client -------------------------------------------------------------------------------------
 
 
@@ -169,8 +197,11 @@ def test_version_matches_pyproject() -> None:
     meta = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
     assert meta["version"] == VERSION
     assert USER_AGENT == f"arctend-python/{VERSION}"
-    assert meta["requires-python"] == ">=3.11,<3.14"
-    assert meta["dependencies"] == ["forecasting-tools>=0.3.5,<0.4"]
+    assert meta["requires-python"] == ">=3.11"
+    assert "Programming Language :: Python :: 3.14" in meta["classifiers"]
+    assert meta["scripts"] == {"arctend": "arctend.__main__:main"}
+    assert meta["dependencies"] == []
+    assert meta["optional-dependencies"]["tools"] == ["forecasting-tools>=0.3.5,<0.4"]
 
 
 def _shipped_text_files() -> list[Path]:

@@ -11,7 +11,8 @@ import asyncio
 
 from main import FallTemplateBot2026  # your own bot, unchanged
 
-from arctend import ArctendClient, forecast_on_arctend
+from arctend import ArctendClient
+from arctend.tools import forecast_on_arctend
 
 bot = FallTemplateBot2026(
     research_reports_per_question=1,

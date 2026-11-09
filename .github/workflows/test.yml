@@ -1,0 +1,56 @@
+# Tests the package on Linux, Windows and macOS with the oldest and the newest supported Python:
+# first the wheel alone in a fresh virtual environment (no other distribution, the `arctend`
+# command, no forecasting_tools import), then the whole test suite with the dev group (the
+# bot-template adapter is tested on 3.11 to 3.14). publish.yml runs this workflow first and
+# publishes only when it passes.
+name: Test
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ["3.11", "3.14"]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    env:
+      # Outside the checkout, as a relative path (no drive letter on Windows).
+      FRESH: ../arctend-fresh-venv
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Build the wheel
+        run: rm -rf dist && uv build --wheel
+      - name: Install the wheel alone in a fresh virtual environment
+        run: |
+          uv venv --python "${{ matrix.python }}" "$FRESH"
+          uv pip install --python "$FRESH" dist/arctend-*-py3-none-any.whl
+      - name: Only arctend is installed
+        run: |
+          uv pip list --python "$FRESH" --format freeze | tee "$FRESH.installed.txt"
+          others=$(cut -d= -f1 "$FRESH.installed.txt" | grep -v -x -E 'arctend|pip|setuptools|wheel' || true)
+          if [ -n "$others" ]; then echo "unexpected distributions: $others"; exit 1; fi
+          grep -q '^arctend==' "$FRESH.installed.txt"
+      - name: The arctend command and python -m arctend
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then bin="$FRESH/Scripts"; else bin="$FRESH/bin"; fi
+          "$bin/arctend" --help | tee "$FRESH.help.txt"
+          "$bin/python" -m arctend --help
+          for command in register check questions question consensus me rating forecast results run; do
+            grep -q -E "^    $command( |$)" "$FRESH.help.txt" || { echo "missing command: $command"; exit 1; }
+          done
+          "$bin/python" -c "import arctend, sys; assert 'forecasting_tools' not in sys.modules"
+      - name: Test suite
+        run: uv run --locked --python "${{ matrix.python }}" pytest -q

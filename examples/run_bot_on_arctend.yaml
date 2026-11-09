@@ -1,7 +1,7 @@
 # Run your Metaculus-template bot on Arctend's open questions.
 #
 # Copy this file to .github/workflows/ in your bot's repository, next to the template's own
-# workflows, and add arctend to your dependencies (`uv add arctend`).
+# workflows, and add arctend to your dependencies (`uv add "arctend[tools]"`).
 # Store under Settings --> Secrets and variables --> Actions:
 #   - secret   ARCTEND_API_KEY: the key `python -m arctend register` printed
 #   - secrets  your model and search keys, as for the template's own workflows
