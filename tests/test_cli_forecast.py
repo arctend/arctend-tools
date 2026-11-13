@@ -308,6 +308,7 @@ def practice_result(n: int, **overrides: object) -> dict[str, object]:
 def test_results_readable_json_and_limit(
     keyed: FakeArctend, capsys: pytest.CaptureFixture[str]
 ) -> None:
+    keyed.sandbox = True
     keyed.practice_results = [
         practice_result(0),
         practice_result(1, format="multiple_choice", outcome_index=2, log_score=None),
@@ -320,18 +321,20 @@ def test_results_readable_json_and_limit(
     assert "log_score -0.5108" in lines[0] and "outcome 0" in lines[0]
     assert lines[0].endswith("Practice 0?")
     assert "multiple_choice" in lines[1] and "log_score -" in lines[1] and "outcome 2" in lines[1]
-    assert [r["path"] for r in keyed.requests] == ["/v1/practice/results"] * 2  # two pages
+    # The deployment from GET /v1/me, then two pages.
+    assert keyed.paths() == ["/v1/me", "/v1/practice/results", "/v1/practice/results"]
 
     keyed.requests.clear()
     _, out, _ = run(["results", "--limit", "2"], capsys)
     assert len(out.strip().splitlines()) == 2
-    assert len(keyed.requests) == 1  # the limit stops before the next page
+    assert keyed.paths() == ["/v1/me", "/v1/practice/results"]  # the limit stops before page 2
 
     _, out, _ = run(["results", "--json", "--limit", "1"], capsys)
     assert json.loads(out) == [practice_result(0)]
 
 
 def test_results_empty(keyed: FakeArctend, capsys: pytest.CaptureFixture[str]) -> None:
+    keyed.sandbox = True
     code, out, _ = run(["results"], capsys)
     assert code == 0 and out.strip() == cli.NO_RESULTS
     assert cli.NO_RESULTS == (
@@ -339,15 +342,89 @@ def test_results_empty(keyed: FakeArctend, capsys: pytest.CaptureFixture[str]) -
     )
 
 
-def test_results_outside_the_sandbox(
+def test_results_sandbox_without_the_practice_route(
     keyed: FakeArctend, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    keyed.sandbox = True
     keyed.serves_practice = False
     code, out, err = run_main(["results"], capsys, monkeypatch)
     assert code == 1 and out == ""
     assert err.strip() == (
         "Practice results are served only by the practice sandbox (https://sandbox.arctend.com)."
     )
+
+
+def production_result(n: int, **overrides: object) -> dict[str, object]:
+    r: dict[str, object] = {
+        "question_id": f"00000000-0000-0000-0000-0000000002{n:02d}",
+        "title": f"Question {n}?",
+        "format": "binary",
+        "resolution_status": "final",
+        "decided_at": f"2026-11-18T0{n}:30:00.000Z",
+        "score_status": "scored",
+        "mean_log_score": -0.6,
+        "closing_log_score": -0.2231435513142097,
+        "median_closing_log_score": -0.6931471805599453,
+    }
+    r.update(overrides)
+    return r
+
+
+def test_results_on_production_print_the_rows(
+    keyed: FakeArctend, capsys: pytest.CaptureFixture[str]
+) -> None:
+    keyed.results = [
+        production_result(3),
+        production_result(
+            2,
+            format="numeric",
+            resolution_status="provisional",
+            score_status="pending",
+            mean_log_score=None,
+            closing_log_score=None,
+            median_closing_log_score=None,
+        ),
+        production_result(
+            1,
+            resolution_status="annulled",
+            decided_at=None,
+            score_status="none",
+            mean_log_score=None,
+            closing_log_score=None,
+            median_closing_log_score=None,
+        ),
+        production_result(0, median_closing_log_score=None),
+    ]
+    code, out, _ = run(["results"], capsys)
+    lines = out.strip().splitlines()
+    assert code == 0 and len(lines) == 4
+    assert lines[0].startswith("2026-11-18 03:30 UTC  binary           final")
+    assert "mean -0.6000  closing -0.2231  median -0.6931" in lines[0]
+    assert lines[0].endswith("Question 3?")
+    assert "provisional" in lines[1] and "mean pending  closing pending  median pending" in lines[1]
+    assert lines[2].startswith("-  binary") and "annulled" in lines[2]
+    assert "mean -  closing -  median -" in lines[2]
+    assert "median -  Question 0?" in lines[3]
+    # The deployment from GET /v1/me, then the production route, page by page.
+    assert keyed.paths() == ["/v1/me", "/v1/me/results", "/v1/me/results"]
+
+    keyed.requests.clear()
+    _, out, _ = run(["results", "--json", "--limit", "1"], capsys)
+    assert json.loads(out) == {
+        "items": [production_result(3)],
+        "result_version": "result_v1",
+        "scoring_version": "scoring_v2",
+        "notice": "Raw results on single questions.",
+    }
+    assert keyed.paths() == ["/v1/me", "/v1/me/results"]  # the limit stops before page 2
+
+
+def test_results_on_production_empty(
+    keyed: FakeArctend, capsys: pytest.CaptureFixture[str]
+) -> None:
+    code, out, _ = run(["results"], capsys)
+    assert code == 0 and out.strip() == cli.NO_PRODUCTION_RESULTS
+    assert "/v1/practice/results" not in keyed.paths()
 
 
 def test_results_without_a_key(

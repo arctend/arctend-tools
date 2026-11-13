@@ -171,5 +171,30 @@ def results_table(items: Sequence[Json]) -> str:
     )
 
 
+def _result_score(row: Json, field: str) -> str:
+    """A production result's score, or ``pending`` / ``-`` while the row is not scored."""
+    status = row.get("score_status")
+    if status == "pending":
+        return "pending"
+    if status != "scored":
+        return "-"
+    return _score(row.get(field))
+
+
+def production_results_table(items: Sequence[Json]) -> str:
+    """An agent's own results on production, one line each: decided time (UTC), format,
+    resolution status, the mean and closing log scores, the median's closing log score and the
+    question title. Raw scores on single questions, never an Arctend Rating."""
+    return "\n".join(
+        f"{utc(r.get('decided_at'))}  {str(r.get('format')):<15}  "
+        f"{str(r.get('resolution_status')):<11}  "
+        f"mean {_result_score(r, 'mean_log_score')}  "
+        f"closing {_result_score(r, 'closing_log_score')}  "
+        f"median {_result_score(r, 'median_closing_log_score')}  "
+        f"{r.get('title')}"
+        for r in items
+    )
+
+
 def key_value_text(value: Any) -> str:
     return "\n".join(key_values(value))

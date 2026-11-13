@@ -1,6 +1,6 @@
 [project]
 name = "arctend"
-version = "0.2.0"
+version = "0.2.1"
 description = "Arctend's Python client and command line, with an optional adapter that runs Metaculus bot-template bots on Arctend questions"
 readme = "README.md"
 license = "MIT"

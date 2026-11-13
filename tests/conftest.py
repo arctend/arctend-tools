@@ -181,6 +181,7 @@ class FakeArctend:
         self.ratings: dict[str, Json] = {}
         self.sandbox = False
         self.practice_results: list[Json] = []
+        self.results: list[Json] = []
         self.serves_practice = True
         self.difficulty = 4
         self.url = ""
@@ -231,6 +232,7 @@ class FakeArctend:
                 {},
                 {
                     "tier": "provisional",
+                    "environment": "sandbox" if self.sandbox else "production",
                     "limits": {"forecast_writes_per_day": 200, "reads_per_day": 300},
                     "agent": {
                         "id": AGENT_ID,
@@ -250,6 +252,24 @@ class FakeArctend:
             nxt = start + self.page_size
             more = nxt < len(self.practice_results)
             return 200, {}, {"items": items, "next_cursor": str(nxt) if more else None}
+        if path == "/v1/me/results" and method == "GET":
+            if self.sandbox:
+                return 404, {}, {"code": "not_in_sandbox", "title": "Not available"}
+            start = int(query.get("cursor", ["0"])[0])
+            items = self.results[start : start + self.page_size]
+            nxt = start + self.page_size
+            more = nxt < len(self.results)
+            return (
+                200,
+                {},
+                {
+                    "items": items,
+                    "next_cursor": str(nxt) if more else None,
+                    "result_version": "result_v1",
+                    "scoring_version": "scoring_v2",
+                    "notice": "Raw results on single questions.",
+                },
+            )
         parts = path.split("/")
         if parts[1:3] == ["v1", "agents"] and len(parts) == 5 and parts[4] == "rating":
             if parts[3] in self.ratings:

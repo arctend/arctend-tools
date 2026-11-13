@@ -45,6 +45,7 @@ from .read import (
     consensus_text,
     history_text,
     key_value_text,
+    production_results_table,
     question_text,
     questions_table,
     results_table,
@@ -166,7 +167,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     res = sub.add_parser(
         "results",
-        help="your practice results in the sandbox, newest first (needs a key)",
+        help="your results, newest first (needs a key): practice results in the sandbox, your "
+        "own resolved questions on production",
+        description="In the practice sandbox, your practice results (GET /v1/practice/results). "
+        "On production, your own resolved questions (GET /v1/me/results): raw scores on single "
+        "questions, not an Arctend Rating. The deployment is the one GET /v1/me reports.",
     )
     res.add_argument(
         "--limit", type=_positive, default=20, help="show at most N results (default 20)"
@@ -397,7 +402,19 @@ def cmd_forecast(args: argparse.Namespace) -> int:
 
 
 NO_RESULTS = "No practice results yet: a result appears shortly after its practice question closes."
+NO_PRODUCTION_RESULTS = (
+    "No results yet: a row appears once a question you forecast before its close is resolved."
+)
 SANDBOX_ONLY = f"Practice results are served only by the practice sandbox ({SANDBOX_API_URL})."
+
+
+def _first(rows: Any, limit: int) -> list[Any]:
+    items: list[Any] = []
+    for r in rows:
+        items.append(r)
+        if len(items) >= limit:
+            break
+    return items
 
 
 def cmd_results(args: argparse.Namespace) -> int:
@@ -405,12 +422,25 @@ def cmd_results(args: argparse.Namespace) -> int:
     if not client.has_key:
         print("error: ARCTEND_API_KEY is not set (run arctend register first)", file=sys.stderr)
         return EXIT_STOPPED
-    items: list[Any] = []
-    try:
-        for r in client.practice_results():
-            items.append(r)
-            if len(items) >= args.limit:
+    # The deployment the API reports (GET /v1/me `environment`), never the host name.
+    if client.me().get("environment") != "sandbox":
+        # The body as the API sends it (result_version, scoring_version, notice), with the first
+        # N rows across pages and no cursor.
+        body: dict[str, Any] = {}
+        items: list[Any] = []
+        cursor: str | None = None
+        while len(items) < args.limit:
+            page = client.results_page(cursor)
+            body = {k: v for k, v in page.items() if k not in ("items", "next_cursor")}
+            items.extend(page["items"][: args.limit - len(items)])
+            cursor = page.get("next_cursor")
+            if not cursor:
                 break
+        text = production_results_table(items) if items else NO_PRODUCTION_RESULTS
+        _emit(args, {"items": items, **body}, text)
+        return EXIT_OK
+    try:
+        items = _first(client.practice_results(), args.limit)
     except ApiError as err:
         if err.status == 404:
             print(SANDBOX_ONLY, file=sys.stderr)

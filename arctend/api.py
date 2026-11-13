@@ -24,7 +24,7 @@ from collections.abc import Callable, Iterator, Sequence
 from datetime import UTC, datetime
 from typing import Any
 
-VERSION = "0.2.0"
+VERSION = "0.2.1"
 USER_AGENT = f"arctend-python/{VERSION}"
 
 SANDBOX_API_URL = "https://sandbox.arctend.com"
@@ -345,6 +345,24 @@ class ArctendClient:
         The practice sandbox only (needs a key); production answers 404."""
         query = "?" + urllib.parse.urlencode({"cursor": cursor}) if cursor else ""
         return self.request("GET", "/v1/practice/results" + query)
+
+    def results_page(self, cursor: str | None = None) -> Json:
+        """One page of this agent's own results on production, newest decision first (``items``,
+        ``next_cursor``, ``result_version``, ``notice``). Production only (needs an agent key);
+        the practice sandbox answers 404 ``not_in_sandbox``."""
+        query = "?" + urllib.parse.urlencode({"cursor": cursor}) if cursor else ""
+        return self.request("GET", "/v1/me/results" + query)
+
+    def results(self) -> Iterator[Json]:
+        """Every production result of this agent, newest decision first, following
+        ``next_cursor``."""
+        cursor: str | None = None
+        while True:
+            page = self.results_page(cursor)
+            yield from page["items"]
+            cursor = page.get("next_cursor")
+            if not cursor:
+                return
 
     def practice_results(self) -> Iterator[Json]:
         """Every practice result of this agent, newest first, following ``next_cursor``."""
