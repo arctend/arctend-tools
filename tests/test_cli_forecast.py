@@ -26,6 +26,7 @@ from arctend.api import (
     idempotency_key,
     manual_idempotency_key,
 )
+from arctend.read import key_value_text
 
 
 @pytest.fixture
@@ -318,9 +319,13 @@ def test_results_readable_json_and_limit(
     lines = out.strip().splitlines()
     assert code == 0 and len(lines) == 3
     assert lines[0].startswith("2026-11-09 10:00 UTC  binary")
-    assert "log_score -0.5108" in lines[0] and "outcome 0" in lines[0]
+    assert "log_score -0.5108" in lines[0] and "outcome yes" in lines[0]
     assert lines[0].endswith("Practice 0?")
-    assert "multiple_choice" in lines[1] and "log_score -" in lines[1] and "outcome 2" in lines[1]
+    assert (
+        "multiple_choice" in lines[1]
+        and "log_score -" in lines[1]
+        and "outcome option 3" in lines[1]
+    )
     # The deployment from GET /v1/me, then two pages.
     assert keyed.paths() == ["/v1/me", "/v1/practice/results", "/v1/practice/results"]
 
@@ -527,3 +532,56 @@ def test_a_title_the_console_cannot_encode_does_not_crash(
     assert proc.returncode == 0, proc.stderr.decode("utf-8", "replace")
     out = proc.stdout.decode("cp1252")
     assert "Will ?? see more than 30 mm of rain? ?mega" in out
+
+
+# --- the receipt's vector and the results line's outcome (task 225) -----------------------------
+
+
+def test_receipt_vector_prints_as_typed_and_without_float_artefacts(
+    keyed: FakeArctend, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # Rounding rule: ten decimal places, display only. Float artefacts sit near 1e-16, so a value
+    # typed with up to ten decimals comes back as typed and two different vectors never print alike.
+    q = keyed.add(make_question("binary", 1))
+    code, out, _ = run(["forecast", q["id"], "--probability", "0.33"], capsys)
+    assert code == 0 and "vector: 0.33, 0.67" in out and "0.6699999" not in out
+    assert keyed.puts()[0]["body"] == {"probability": 0.33}  # the request is unchanged
+
+    q3 = keyed.add(make_question("multiple_choice", 2))
+    code, out, _ = run(["forecast", q3["id"], "--vector", "0.2,0.5,0.3"], capsys)
+    assert code == 0 and "vector: 0.2, 0.5, 0.3" in out
+
+    assert key_value_text({"vector": [0.1234567891, 0.8765432109]}) == (
+        "vector: 0.1234567891, 0.8765432109"
+    )
+    # Two vectors that differ at the 9th decimal still print differently.
+    assert key_value_text({"vector": [0.123456789, 0.876543211]}) != key_value_text(
+        {"vector": [0.123456788, 0.876543212]}
+    )
+
+
+def test_receipt_vector_json_stays_raw(
+    keyed: FakeArctend, capsys: pytest.CaptureFixture[str]
+) -> None:
+    q = keyed.add(make_question("binary", 1))
+    code, out, _ = run(["forecast", q["id"], "--probability", "0.33", "--json"], capsys)
+    assert code == 0 and json.loads(out)["vector"] == [0.33, 1 - 0.33]
+
+
+def test_practice_results_outcome_in_words(
+    keyed: FakeArctend, capsys: pytest.CaptureFixture[str]
+) -> None:
+    keyed.sandbox = True
+    keyed.practice_results = [
+        practice_result(0, outcome_index=1),
+        practice_result(1, outcome_index=0),
+        practice_result(2, format="multiple_choice", outcome_index=2),
+        practice_result(3, format="multiple_choice", outcome_index=0, outcome_label="Red"),
+        practice_result(4, format="numeric", outcome_index=1),
+    ]
+    _, out, _ = run(["results"], capsys)
+    lines = out.strip().splitlines()
+    assert "outcome no " in lines[0] and "outcome yes " in lines[1]
+    assert "outcome option 3 " in lines[2]
+    assert "outcome Red " in lines[3]
+    assert "outcome option 2 " in lines[4]

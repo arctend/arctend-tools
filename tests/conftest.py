@@ -337,7 +337,9 @@ class FakeArctend:
             "agent_id": "agent-1",
             "received_at": iso(datetime.now(UTC)),
             "content_hash": "0" * 64,
-            "vector": body.get("vector"),
+            # The real receipt carries the full vector; a binary forecast is [p, 1 - p].
+            "vector": body.get("vector")
+            or ([body["probability"], 1 - body["probability"]] if "probability" in body else None),
             "probability": body.get("probability"),
             "replayed": False,
         }

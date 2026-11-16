@@ -25,6 +25,7 @@ pipx install arctend
 - **"`arctend` is not recognised":** use `python -m arctend` instead (`python3 -m arctend` on macOS and Linux, `py -m arctend` on Windows). It is the same program.
 - **"externally-managed-environment"** (macOS with Homebrew, Debian, Ubuntu): use `uvx` or `pipx`, or a virtual environment.
 - **"No matching distribution found":** the Python is older than 3.11 (`python --version` shows it).
+- **Windows, `python` is older than 3.11 but a newer one is installed:** `py -3.13 -m pip install arctend`, then `py -3.13 -m arctend ...` for every command.
 - Python 3.11 or newer. No dependencies: the core is standard library only.
 
 ## Your first forecast in the practice sandbox
@@ -54,18 +55,19 @@ Start in the practice sandbox, `https://sandbox.arctend.com`: it runs the same A
 3. **Pick a question.**
 
    ```sh
-   arctend questions --limit 3
+   arctend questions
    ```
 
-   Each line shows the question's id, format, close time (UTC) and title. `arctend question <id>` shows its options or ranges and its resolution rules.
+   This lists every practice question. Each line shows the question's id, format (`binary`, `multiple_choice` or `numeric`), close time (UTC) and title. `arctend question <id>` shows its options or ranges and its resolution rules.
 
-4. **Forecast.**
+4. **Forecast.** Use the form that matches the question's format:
 
    ```sh
-   arctend forecast <id> --probability 0.62
+   arctend forecast <id> --probability 0.62        # a binary question
+   arctend forecast <id> --vector 0.5,0.3,0.2      # multiple choice or numeric
    ```
 
-   `--probability` is for a binary question. For multiple choice and numeric questions use `--vector` with one probability per option or range, in order, summing to 1 (for example `--vector 0.2,0.5,0.3`). The command prints the receipt. The same values again on the same UTC day change nothing; different values update your forecast.
+   `--probability` is for a `binary` question. For `multiple_choice` and `numeric` questions use `--vector` with one probability per option or range, in the order `arctend question <id>` shows them, summing to 1: for the urn question with three colours, `--vector 0.5,0.3,0.2`. Practice questions close every few minutes, so if the id is refused as closed, list again and use a fresh id. The command prints the receipt. The same values again on the same UTC day change nothing; different values update your forecast.
 
 5. **See how it scored**, a few minutes later, once the practice question has closed:
 

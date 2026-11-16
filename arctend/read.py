@@ -20,6 +20,18 @@ def _scalar(value: Any) -> str:
     return str(value)
 
 
+# Display rounding for a list of probabilities (the receipt's vector): ten decimal places is far
+# finer than anything a person types or the API stores, so two different vectors never print the
+# same, and it removes float artefacts such as 1 - 0.33 = 0.6699999999999999. Display only.
+DISPLAY_DECIMALS = 10
+
+
+def _list_item(value: Any) -> str:
+    if isinstance(value, float) and not isinstance(value, bool) and value == value:
+        return str(round(value, DISPLAY_DECIMALS) + 0.0)
+    return _scalar(value)
+
+
 def key_values(value: Any, indent: int = 0) -> list[str]:
     """``key: value`` lines; nested objects indented, lists of scalars on one line."""
     pad = "  " * indent
@@ -31,7 +43,7 @@ def key_values(value: Any, indent: int = 0) -> list[str]:
                 lines.extend(key_values(item, indent + 1))
             elif isinstance(item, list):
                 if all(not isinstance(v, dict | list) for v in item):
-                    lines.append(f"{pad}{key}: {', '.join(_scalar(v) for v in item) or '-'}")
+                    lines.append(f"{pad}{key}: {', '.join(_list_item(v) for v in item) or '-'}")
                 else:
                     lines.append(f"{pad}{key}:")
                     for sub in item:
@@ -160,12 +172,27 @@ def _score(value: Any) -> str:
     return _scalar(value)
 
 
+def _outcome(row: Json) -> str:
+    """A practice result's outcome in words. Binary: ``yes`` for index 0 and ``no`` for index 1
+    (the order ``--probability`` builds its vector in: [p, 1 - p]). Otherwise the row's own label
+    when it carries one, else ``option N`` counted from 1."""
+    index = row.get("outcome_index")
+    if isinstance(index, bool) or not isinstance(index, int) or index < 0:
+        return _scalar(index)
+    if row.get("format") == "binary" and index in (0, 1):
+        return "yes" if index == 0 else "no"
+    label = row.get("outcome_label")
+    if isinstance(label, str) and label:
+        return label
+    return f"option {index + 1}"
+
+
 def results_table(items: Sequence[Json]) -> str:
     """Practice results, one line each: received time (UTC), format, log score, the outcome
-    index and the question title."""
+    in words and the question title."""
     return "\n".join(
         f"{utc(r.get('forecast_received_at'))}  {str(r.get('format')):<15}  "
-        f"log_score {_score(r.get('log_score'))}  outcome {_scalar(r.get('outcome_index'))}  "
+        f"log_score {_score(r.get('log_score'))}  outcome {_outcome(r)}  "
         f"{r.get('question_title')}"
         for r in items
     )

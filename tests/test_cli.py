@@ -242,3 +242,17 @@ def test_no_metaculus_token_is_read() -> None:
         text = path.read_text(encoding="utf-8")
         assert 'METACULUS_TOKEN"' not in text and 'getenv("METACULUS' not in text, path
         assert "MetaculusClient(" not in text, path
+
+
+def test_readme_first_forecast_steps_cover_every_format() -> None:
+    # Task 225: the practice list holds binary, multiple choice and numeric questions in any
+    # order, so the steps must list them all and show both forms of `forecast`.
+    text = (ROOT / "README.md").read_text(encoding="utf-8")
+    start = text.index("## Your first forecast in the practice sandbox")
+    steps = text[start : text.index("## The command line")]
+    listing = steps.index("arctend questions")
+    assert "--limit" not in steps
+    assert "--probability" in steps[listing:] and "--vector 0.5,0.3,0.2" in steps[listing:]
+    assert "`binary`" in steps and "`multiple_choice`" in steps and "`numeric`" in steps
+    assert "close every few minutes" in steps
+    assert "py -3.13 -m pip install arctend" in text

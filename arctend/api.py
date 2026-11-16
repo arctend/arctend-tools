@@ -24,7 +24,7 @@ from collections.abc import Callable, Iterator, Sequence
 from datetime import UTC, datetime
 from typing import Any
 
-VERSION = "0.2.1"
+VERSION = "0.2.2"
 USER_AGENT = f"arctend-python/{VERSION}"
 
 SANDBOX_API_URL = "https://sandbox.arctend.com"
